@@ -9,7 +9,7 @@ export default function AdminLayout({
   children: React.ReactNode
 }) {
   return (
-    <RouteGuard requireAuth={true}>
+    <RouteGuard requireAuth={true} requireAdmin={true}>
     <ThemeProvider>  
       <div className="min-h-screen flex">
         <AdminSidebar />

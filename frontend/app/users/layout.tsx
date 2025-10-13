@@ -8,7 +8,7 @@ export default function UsersLayout({
   children: React.ReactNode
 }) {
   return (
-    <RouteGuard requireAuth={false}>
+    <RouteGuard requireAuth={true}>
       <div className="flex min-h-screen bg-background">
         <UserSidebar />
         <main className="flex-1 overflow-auto">{children}</main>
