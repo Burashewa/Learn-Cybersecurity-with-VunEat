@@ -1,49 +1,13 @@
+"use client"
+
+import { useEffect, useState } from "react"
+import { useAuth } from "@/components/auth-context"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Mail, Calendar, Trophy, FileText, Plus } from "lucide-react"
-import Link from "next/link"
+import { Mail, Calendar, Trophy, FileText } from "lucide-react"
 
-
-
-
-
-// Sample user data
-const userData = {
-  username: "CyberNinja",
-  email: "cyberninja@example.com",
-  joinDate: "2024-01-10",
-  totalPoints: 420,
-  reportsSubmitted: 12,
-  reportsApproved: 11,
-  recentReports: [
-    {
-      id: "1",
-      title: "SQL Injection in Login Form",
-      severity: "high",
-      status: "approved",
-      points: 40,
-      submittedAt: "2024-01-15",
-    },
-    {
-      id: "2",
-      title: "Reflected XSS via Search Parameter",
-      severity: "medium",
-      status: "pending",
-      points: 0,
-      submittedAt: "2024-01-18",
-    },
-    {
-      id: "3",
-      title: "CSRF Token Bypass",
-      severity: "critical",
-      status: "approved",
-      points: 70,
-      submittedAt: "2024-01-20",
-    },
-  ],
-}
+const API_URL = process.env.NEXT_PUBLIC_API_URL 
 
 const severityColors: { [key: string]: string } = {
   low: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
@@ -58,22 +22,98 @@ const statusColors: { [key: string]: string } = {
   rejected: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300",
 }
 
+interface Report {
+  id: string
+  title: string
+  severity: string
+  status: string
+  points: number
+  submittedAt: string
+}
+
+interface Stats {
+  total_points: number
+  reports_submitted: number
+  reports_approved: number
+}
+
+interface UserData {
+  user: {
+    username: string
+    email: string
+    created_at: string
+  }
+  stats: Stats
+  recentReports: Report[]
+}
+
 export default function DashboardPage() {
+  const { user, isAuthenticated } = useAuth()
+  const [dashboardData, setDashboardData] = useState<UserData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
+
+  useEffect(() => {
+    if (!isAuthenticated) return
+
+    const fetchDashboard = async () => {
+      setLoading(true)
+      setError("")
+      try {
+        const token = localStorage.getItem("token")
+        if (!token) {
+          setError("No authentication token found. Please log in again.")
+          setLoading(false)
+          return
+        }
+
+        const res = await fetch(`${API_URL}/api/users/dashboard`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        if (!res.ok) {
+          const errText = await res.text()
+          throw new Error(`Failed to fetch dashboard data: ${errText}`)
+        }
+
+        const rawData = await res.json()
+
+        const data: UserData = {
+          ...rawData,
+          recentReports: rawData.recentReports.map((r: any) => ({
+            ...r,
+            submittedAt: r.submitted_at,
+          })),
+        }
+
+        setDashboardData(data)
+      } catch (err: any) {
+        console.error(err)
+        setError(err.message || "Error fetching dashboard")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+
+    fetchDashboard()
+  }, [isAuthenticated])
+
+  if (loading) return <div className="p-8 text-center">Loading...</div>
+  if (error) return <div className="p-8 text-center text-red-600">{error}</div>
+  if (!dashboardData) return null
+
+  const { user: userInfo, stats, recentReports } = dashboardData
+
   return (
     <div className="p-8 bg-muted/5 min-h-screen">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold">Welcome back, {userData.username} 👋</h1>
-            <p className="text-muted-foreground">Here’s an overview of your activity and reports.</p>
-          </div>
-          {/* <Button asChild size="lg">
-            <Link href="/users/reports/submit">
-              <Plus className="h-4 w-4 mr-2" />
-              Submit New Report
-            </Link>
-          </Button> */}
+        <div className="mb-10">
+          <h1 className="text-3xl font-bold">Welcome back, {userInfo.username} 👋</h1>
+          <p className="text-muted-foreground">Here’s an overview of your activity and reports.</p>
         </div>
 
         <div className="grid lg:grid-cols-4 gap-6">
@@ -83,18 +123,18 @@ export default function DashboardPage() {
               <div className="flex flex-col items-center text-center">
                 <Avatar className="h-20 w-20 mb-4">
                   <AvatarFallback className="text-xl font-bold">
-                    {userData.username.slice(0, 2).toUpperCase()}
+                    {userInfo.username.slice(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <h2 className="text-lg font-semibold mb-1">{userData.username}</h2>
+                <h2 className="text-lg font-semibold mb-1">{userInfo.username}</h2>
                 <div className="w-full space-y-2 text-sm">
                   <div className="flex items-center justify-center">
                     <Mail className="h-4 w-4 mr-2 text-muted-foreground" />
-                    <span className="truncate">{userData.email}</span>
+                    <span className="truncate">{userInfo.email}</span>
                   </div>
                   <div className="flex items-center justify-center">
                     <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
-                    <span>Joined {new Date(userData.joinDate).toLocaleDateString()}</span>
+                    <span>Joined {new Date(userInfo.created_at).toLocaleDateString()}</span>
                   </div>
                 </div>
               </div>
@@ -108,7 +148,7 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Total Points</p>
-                    <p className="text-2xl font-bold text-primary">{userData.totalPoints}</p>
+                    <p className="text-2xl font-bold text-primary">{stats.total_points}</p>
                   </div>
                   <Trophy className="h-8 w-8 text-primary" />
                 </div>
@@ -120,7 +160,7 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Reports Submitted</p>
-                    <p className="text-2xl font-bold text-primary">{userData.reportsSubmitted}</p>
+                    <p className="text-2xl font-bold text-primary">{stats.reports_submitted}</p>
                   </div>
                   <FileText className="h-8 w-8 text-primary" />
                 </div>
@@ -132,7 +172,7 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Approved Reports</p>
-                    <p className="text-2xl font-bold text-primary">{userData.reportsApproved}</p>
+                    <p className="text-2xl font-bold text-primary">{stats.reports_approved}</p>
                   </div>
                   <div className="h-8 w-8 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
                     <Trophy className="h-5 w-5 text-green-600" />
@@ -153,13 +193,13 @@ export default function DashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {userData.recentReports.length === 0 ? (
+              {recentReports.length === 0 ? (
                 <div className="text-center py-6 text-muted-foreground">
                   You haven’t submitted any reports yet.
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {userData.recentReports.map((report) => (
+                  {recentReports.map((report) => (
                     <div
                       key={report.id}
                       className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition"

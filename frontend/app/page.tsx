@@ -50,8 +50,8 @@ export default function HomePage() {
                   <div className="bg-card border rounded-lg p-6">
                     <div className="flex items-center justify-between mb-4">
                       <div>
-                        <h3 className="text-lg font-semibold">VulnShop - E-commerce Platform</h3>
-                        <p className="text-muted-foreground">A deliberately vulnerable online shopping application</p>
+                        <h3 className="text-lg font-semibold">VulnEat - Food Delivery Platform</h3>
+                        <p className="text-muted-foreground">A deliberately vulnerable online Food Delivery application</p>
                       </div>
                       <ExternalLink className="h-5 w-5 text-muted-foreground" />
                     </div>
@@ -91,7 +91,7 @@ export default function HomePage() {
               and see how you rank against others on the leaderboard.
             </p>
             <Button size="lg" asChild>
-              <Link href="/leaderboard">View Leaderboard</Link>
+              <Link href="../../leaderboard">View Leaderboard</Link>
             </Button>
           </div>
         </section>

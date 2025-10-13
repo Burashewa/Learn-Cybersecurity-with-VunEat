@@ -1,80 +1,168 @@
 "use client"
 
-import { useState } from "react"
-import { DataTable } from "@/components/data-table"
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Users, UserCheck, UserX, Award, Eye, Shield, RefreshCw } from "lucide-react"
+import { Users, UserCheck, UserX, Award } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 
-// Sample users data
-const usersData = [
-  {
-    id: "1",
-    username: "CyberNinja",
-    email: "cyberninja@example.com",
-    totalPoints: 420,
-    reportsSubmitted: 12,
-    joinDate: "2024-01-10T00:00:00Z",
-    status: "active",
-  },
-  {
-    id: "2",
-    username: "HackMaster",
-    email: "hackmaster@example.com",
-    totalPoints: 380,
-    reportsSubmitted: 11,
-    joinDate: "2024-01-12T00:00:00Z",
-    status: "active",
-  },
-  {
-    id: "3",
-    username: "SecureCode",
-    email: "securecode@example.com",
-    totalPoints: 340,
-    reportsSubmitted: 9,
-    joinDate: "2024-01-15T00:00:00Z",
-    status: "inactive",
-  },
-]
+type User = {
+  id: number
+  username: string
+  email: string
+  totalPoints: number
+  reportsSubmitted: number
+  joinDate: string
+  status: "active" | "inactive"
+  is_admin: boolean
+}
+
+function DataTable({ columns, data, searchable }: { columns: any[], data: any[], searchable?: boolean }) {
+  return (
+    <div className="overflow-x-auto rounded-lg border bg-background shadow-sm">
+      <table className="w-full table-auto border-collapse">
+        <thead className="bg-muted/50">
+          <tr>
+            {columns.map((col) => (
+              <th
+                key={col.key}
+                className="border-b border-border px-4 py-2 text-left text-sm font-medium text-muted-foreground"
+              >
+                {col.label}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {Array.isArray(data) &&
+            data.map((row) => (
+              <tr
+                key={row.id}
+                className="border-b border-border hover:bg-muted/30 transition-colors duration-150"
+              >
+                {columns.map((col) => (
+                  <td key={col.key} className="px-4 py-2 text-sm text-foreground">
+                    {col.render ? col.render(row) : row[col.key]}
+                  </td>
+                ))}
+              </tr>
+            ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL
 
 export default function AdminUsersPage() {
-  const [users, setUsers] = useState(usersData)
-  const [selectedUser, setSelectedUser] = useState<string | null>(null)
+  const [users, setUsers] = useState<User[]>([])
+  const [selectedUser, setSelectedUser] = useState<number | null>(null)
   const [pointsAdjustment, setPointsAdjustment] = useState("")
+  const [loading, setLoading] = useState(false)
 
-  const handleView = (id: string) => {
-    const user = users.find((u) => u.id === id)
-    if (user) alert(`Viewing details for ${user.username}\nEmail: ${user.email}`)
+  // Fetch users from backend
+  const fetchUsers = async () => {
+    try {
+      setLoading(true)
+      const res = await fetch(`${API_URL}/api/admin/users`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      })
+      const data = await res.json()
+
+      if (Array.isArray(data)) {
+        setUsers(data)
+      } else if (Array.isArray(data.users)) {
+        setUsers(data.users)
+      } else {
+        console.error("Invalid users response:", data)
+        setUsers([])
+      }
+    } catch (error) {
+      console.error("Error fetching users:", error)
+      setUsers([])
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const handleAdjustPoints = (userId: string, adjustment: number) => {
-    setUsers((prev) =>
-      prev.map((user) =>
-        user.id === userId ? { ...user, totalPoints: Math.max(0, user.totalPoints + adjustment) } : user,
-      ),
-    )
-    setSelectedUser(null)
-    setPointsAdjustment("")
+  useEffect(() => {
+    fetchUsers()
+  }, [])
+
+  const handleAdjustPoints = async (userId: number) => {
+    try {
+      const adjustment = parseInt(pointsAdjustment)
+      if (isNaN(adjustment)) return alert("Enter a valid number")
+
+      const res = await fetch(`${API_URL}/api/admin/users/${userId}/adjust-points`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({ adjustment }),
+      })
+
+      const result = await res.json()
+      if (res.ok) {
+        alert(result.message || "Points adjusted successfully")
+        fetchUsers()
+      } else {
+        alert(result.message || "Failed to adjust points")
+      }
+
+      setSelectedUser(null)
+      setPointsAdjustment("")
+    } catch (error) {
+      console.error("Error adjusting points:", error)
+    }
   }
 
-  const toggleStatus = (userId: string) => {
-    setUsers((prev) =>
-      prev.map((user) =>
-        user.id === userId ? { ...user, status: user.status === "active" ? "inactive" : "active" } : user,
-      ),
-    )
+  const handleToggleStatus = async (userId: number) => {
+    try {
+      const res = await fetch(`${API_URL}/api/admin/users/${userId}/toggle-status`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      })
+
+      const result = await res.json()
+      if (res.ok) {
+        await fetchUsers()
+      } else {
+        alert(result.message || "Failed to toggle status")
+      }
+    } catch (error) {
+      console.error("Error toggling user status:", error)
+    }
   }
 
-  const resetPassword = (userId: string) => {
-    const user = users.find((u) => u.id === userId)
-    if (user) alert(`Password reset link sent to ${user.email}`)
+  const handleResetPassword = async (userId: number) => {
+    try {
+      const res = await fetch(`${API_URL}/api/admin/users/${userId}/reset-password`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      })
+      const data = await res.json()
+      alert(data.message)
+    } catch (error) {
+      console.error("Error resetting password:", error)
+    }
   }
 
-  const activeUsers = users.filter((u) => u.status === "active").length
-  const inactiveUsers = users.filter((u) => u.status === "inactive").length
-  const totalPoints = users.reduce((sum, user) => sum + user.totalPoints, 0)
+  // Safeguard: Ensure users is always an array
+  const safeUsers = Array.isArray(users) ? users : []
+
+  const activeUsers = safeUsers.filter((u) => u.status === "active").length
+  const inactiveUsers = safeUsers.filter((u) => u.status === "inactive").length
+  const totalPoints = safeUsers.reduce(
+    (sum, u) => Number(sum) + Number(u.totalPoints || 0),
+    0
+  )
 
   const columns = [
     {
@@ -109,19 +197,29 @@ export default function AdminUsersPage() {
       key: "actions",
       label: "Actions",
       render: (u: any) => (
-        <div className="flex space-x-2">
-          <Button size="sm" variant="outline" onClick={() => handleView(u.id)}>
-            <Eye className="h-4 w-4" />
-          </Button>
-          <Button size="sm" variant="secondary" onClick={() => setSelectedUser(u.id)}>
-            Adjust Points
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => toggleStatus(u.id)}>
+        <div className="flex gap-2">
+          <button
+            onClick={() => handleToggleStatus(u.id)}
+            className={`px-3 py-1 rounded text-white ${
+              u.status === "active" ? "bg-red-600 hover:bg-red-700" : "bg-green-600 hover:bg-green-700"
+            }`}
+          >
             {u.status === "active" ? "Deactivate" : "Activate"}
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => resetPassword(u.id)}>
-            <RefreshCw className="h-4 w-4" />
-          </Button>
+          </button>
+
+          <button
+            onClick={() => handleResetPassword(u.id)}
+            className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            Reset Password
+          </button>
+
+          <button
+            onClick={() => setSelectedUser(u.id)}
+            className="px-3 py-1 rounded bg-yellow-600 hover:bg-yellow-700 text-white"
+          >
+            Adjust Points
+          </button>
         </div>
       ),
     },
@@ -132,17 +230,22 @@ export default function AdminUsersPage() {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold mb-2">User Management</h1>
-        <p className="text-muted-foreground">Manage student accounts, points, and permissions</p>
+        <p className="text-muted-foreground">
+          Manage student accounts, points, and permissions
+        </p>
       </div>
 
       {/* Stats */}
       <div className="grid md:grid-cols-4 gap-6 mb-8">
+        {/* Total Users */}
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Total Users</p>
-                <p className="text-2xl font-bold text-primary">{users.length}</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Total Users
+                </p>
+                <p className="text-2xl font-bold text-primary">{safeUsers.length}</p>
               </div>
               <div className="h-12 w-12 bg-primary/10 rounded-lg flex items-center justify-center">
                 <Users className="h-6 w-6 text-primary" />
@@ -151,11 +254,14 @@ export default function AdminUsersPage() {
           </CardContent>
         </Card>
 
+        {/* Active Users */}
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Active Users</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Active Users
+                </p>
                 <p className="text-2xl font-bold text-green-600">{activeUsers}</p>
               </div>
               <div className="h-12 w-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
@@ -165,11 +271,14 @@ export default function AdminUsersPage() {
           </CardContent>
         </Card>
 
+        {/* Inactive Users */}
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Inactive Users</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Inactive Users
+                </p>
                 <p className="text-2xl font-bold text-red-600">{inactiveUsers}</p>
               </div>
               <div className="h-12 w-12 bg-red-100 dark:bg-red-900 rounded-lg flex items-center justify-center">
@@ -179,11 +288,14 @@ export default function AdminUsersPage() {
           </CardContent>
         </Card>
 
+        {/* Total Points */}
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Total Points</p>
+                <p className="text-sm font-medium text-muted-foreground">
+                  Total Points
+                </p>
                 <p className="text-2xl font-bold text-primary">{totalPoints}</p>
               </div>
               <div className="h-12 w-12 bg-primary/10 rounded-lg flex items-center justify-center">
@@ -211,7 +323,7 @@ export default function AdminUsersPage() {
                 className="w-48"
               />
               <Button
-                onClick={() => handleAdjustPoints(selectedUser, Number.parseInt(pointsAdjustment) || 0)}
+                onClick={() => handleAdjustPoints(selectedUser)}
                 disabled={!pointsAdjustment}
               >
                 Apply Adjustment
@@ -231,7 +343,11 @@ export default function AdminUsersPage() {
           <CardDescription>Manage student accounts and permissions</CardDescription>
         </CardHeader>
         <CardContent>
-          <DataTable columns={columns} data={users} searchable={true} />
+          {loading ? (
+            <p className="text-center text-muted-foreground">Loading users...</p>
+          ) : (
+            <DataTable columns={columns} data={safeUsers} searchable={true} />
+          )}
         </CardContent>
       </Card>
     </div>

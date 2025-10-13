@@ -29,16 +29,24 @@ const sidebarItems = [
     href: "/admin/users",
     icon: Users,
   },
-  {
-    title: "Settings",
-    href: "/admin/settings",
-    icon: Settings,
-  },
+  // {
+  //   title: "Settings",
+  //   href: "/admin/settings",
+  //   icon: Settings,
+  // },
 ]
 
 export function AdminSidebar() {
   const pathname = usePathname()
   const router = useRouter()
+  const logout = () => {
+    // clear token/session
+    localStorage.removeItem("token")
+
+    // redirect to landing page
+    router.push("/")
+
+  }
   return (
     <div className="w-64 bg-sidebar border-r border-sidebar-border min-h-screen flex flex-col">
       <div className="p-6 flex-1">
@@ -84,7 +92,7 @@ export function AdminSidebar() {
 
       <div className="p-6 mt-auto border-t border-sidebar-border">
         <div className="flex justify-center ">
-          <Button variant="ghost" onClick={() => router.push("/")} className="flex items-center space-x-1">
+          <Button variant="ghost" onClick={ logout } className="flex items-center space-x-1">
             <LogOut className="h-4 w-4" />
             <span>Logout</span>
           </Button>

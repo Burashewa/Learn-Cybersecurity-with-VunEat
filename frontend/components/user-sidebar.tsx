@@ -8,6 +8,7 @@ import { User, FileText, Bug, Trophy, Settings, LayoutDashboard, LogOut } from "
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useRouter } from "next/navigation"
 
+
 const sidebarItems = [
   {
     title: "Dashboard",
@@ -29,16 +30,26 @@ const sidebarItems = [
     href: "/leaderboard",
     icon: Trophy,
   },
-  {
-    title: "Settings",
-    href: "/users/settings",
-    icon: Settings,
-  },
+  // {
+  //   title: "Settings",
+  //   href: "/users/settings",
+  //   icon: Settings,
+  // },
 ]
 
 export function UserSidebar() {
-  const pathname = usePathname()
   const router = useRouter()
+  const pathname = usePathname()
+
+  const logout = () => {
+    // clear token/session
+    localStorage.removeItem("token")
+
+    // redirect to landing page
+    router.push("/")
+
+  }
+
 
   return (
     <div className="w-64 bg-sidebar border-r border-sidebar-border min-h-screen flex flex-col">
@@ -86,10 +97,10 @@ export function UserSidebar() {
 
       <div className="p-6 mt-auto border-t border-sidebar-border">
         <div className="flex justify-center ">
-            <Button variant="ghost" onClick={() => router.push("/")} className="flex items-center space-x-1">
-              <LogOut className="h-4 w-4" />
-              <span>Logout</span>
-            </Button>
+          <Button variant="ghost" onClick={logout} className="flex items-center space-x-1">
+            <LogOut className="h-4 w-4" />
+            <span>Logout</span>
+          </Button>
         </div>
       </div>
     </div>

@@ -12,6 +12,8 @@ import { Badge } from "@/components/ui/badge"
 import { FileText, AlertTriangle, Upload } from "lucide-react"
 import { useRouter } from "next/navigation"
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL 
+
 const vulnerabilityTypes = [
   "SQL Injection",
   "Cross-Site Scripting (XSS)",
@@ -38,6 +40,7 @@ const severityLevels = [
 export default function ReportForm() {
   const router = useRouter()
   const [formData, setFormData] = useState({
+    title: "",
     vulnerabilityType: "",
     severity: "",
     description: "",
@@ -52,16 +55,32 @@ export default function ReportForm() {
     e.preventDefault()
     setIsSubmitting(true)
 
-    // TODO: Implement actual report submission
-    console.log("Report submitted:", formData)
-    console.log("PDF file:", pdfFile)
+    const data = new FormData()
+    data.append("title", formData.title)
+    data.append("vulnerabilityType", formData.vulnerabilityType)
+    data.append("severity", formData.severity)
+    data.append("description", formData.description)
+    if (pdfFile) data.append("pdfFile", pdfFile)
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    const res = await fetch(`${API_URL}/api/reports/reportSubmit`, {
+      method: "POST",
+      body: data,
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token")}`, // JWT
+      },
+    })
+
+    const result = await res.json()
+    console.log("Response:", result)
 
     setIsSubmitting(false)
-    // TODO: Show success message and redirect
+    if (res.ok) {
+      router.push("/users/reports")
+    } else {
+      alert(result.error || "Failed to submit report")
+    }
   }
+
 
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
@@ -108,6 +127,19 @@ export default function ReportForm() {
 
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Report Title */}
+            <div className="space-y-2">
+              <Label htmlFor="title">Report Title *</Label>
+              <input
+                id="title"
+                type="text"
+                value={formData.title}
+                onChange={(e) => handleChange("title", e.target.value)}
+                placeholder="Enter a short descriptive title"
+                className="w-full rounded-md border border-gray-300 bg-background px-3 py-2 text-sm shadow-sm focus:border-primary focus:ring focus:ring-primary focus:ring-opacity-50"
+                required
+              />
+            </div>
             {/* Vulnerability Type */}
             <div className="space-y-2">
               <Label htmlFor="vulnerabilityType">Vulnerability Type *</Label>

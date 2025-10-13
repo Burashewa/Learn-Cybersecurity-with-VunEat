@@ -1,3 +1,5 @@
+"use client"
+import { useEffect, useState } from "react"
 import { Footer } from "@/components/footer"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -5,46 +7,19 @@ import { Button } from "@/components/ui/button"
 import { FileText, Clock, CheckCircle, XCircle, AlertCircle } from "lucide-react"
 import Link from "next/link"
 
-// Sample report data - in a real app, this would come from a database
-const reports = [
-  {
-    id: "1",
-    title: "SQL Injection in Login Form",
-    labName: "SQL Injection Fundamentals",
-    vulnerabilityType: "SQL Injection",
-    severity: "high",
-    status: "approved",
-    points: 40,
-    submittedAt: "2024-01-15T10:30:00Z",
-    reviewedAt: "2024-01-16T14:20:00Z",
-    feedback: "Excellent report with clear reproduction steps and good impact assessment.",
-  },
-  {
-    id: "2",
-    title: "Reflected XSS via Search Parameter",
-    labName: "Reflected XSS Attack",
-    vulnerabilityType: "Cross-Site Scripting (XSS)",
-    severity: "medium",
-    status: "pending",
-    points: 0,
-    submittedAt: "2024-01-18T16:45:00Z",
-    reviewedAt: null,
-    feedback: null,
-  },
-  {
-    id: "3",
-    title: "Authentication Bypass Attempt",
-    labName: "JWT Token Manipulation",
-    vulnerabilityType: "Authentication Bypass",
-    severity: "critical",
-    status: "rejected",
-    points: 0,
-    submittedAt: "2024-01-12T09:15:00Z",
-    reviewedAt: "2024-01-13T11:30:00Z",
-    feedback:
-      "The vulnerability described is not actually exploitable. Please review the lab instructions and try again.",
-  },
-]
+const API_URL = process.env.NEXT_PUBLIC_API_URL 
+
+type Report = {
+  id: number
+  title: string
+  vulnerability_type: string
+  severity: "low" | "medium" | "high" | "critical"
+  status: "pending" | "approved" | "rejected"
+  points: number
+  submitted_at: string
+  reviewed_at: string | null
+  feedback: string | null
+}
 
 const severityColors: { [key: string]: string } = {
   low: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
@@ -72,6 +47,40 @@ const statusConfig: { [key: string]: { icon: any; color: string; label: string }
 }
 
 export default function MyReportsPage() {
+  const [reports, setReports] = useState<Report[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetchReports = async () => {
+      setLoading(true)
+      setError("")
+      try {
+        const res = await fetch(`${API_URL}/api/reports/reportsPage`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        })
+
+        if (!res.ok) {
+          throw new Error("Failed to fetch reports")
+        }
+
+        const data = await res.json()
+        setReports(data)
+      } catch (err: any) {
+        setError(err.message)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchReports()
+  }, [])
+  if (loading) return <div className="p-8 text-center">Loading...</div>
+  if (error) return <div className="p-8 text-center text-red-600">{error}</div>
+
+  // stats
   const totalPoints = reports.filter((r) => r.status === "approved").reduce((sum, r) => sum + r.points, 0)
   const approvedReports = reports.filter((r) => r.status === "approved").length
   const pendingReports = reports.filter((r) => r.status === "pending").length
@@ -148,11 +157,8 @@ export default function MyReportsPage() {
                   <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                   <h3 className="text-lg font-medium mb-2">No reports yet</h3>
                   <p className="text-muted-foreground mb-4">
-                    Start by completing a lab and submitting your first vulnerability report.
+                    Start by exploitating and submitting your first vulnerability report.
                   </p>
-                  <Button asChild>
-                    <Link href="/labs">Browse Labs</Link>
-                  </Button>
                 </CardContent>
               </Card>
             ) : (
@@ -164,7 +170,7 @@ export default function MyReportsPage() {
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <CardTitle className="text-lg mb-1">{report.title}</CardTitle>
-                          <CardDescription>{report.labName}</CardDescription>
+                       
                         </div>
                         <div className="flex items-center space-x-2">
                           <Badge className={statusConfig[report.status].color} variant="secondary">
@@ -180,7 +186,7 @@ export default function MyReportsPage() {
                       <div className="grid md:grid-cols-2 gap-4 mb-4">
                         <div className="flex items-center text-sm">
                           <span className="font-medium mr-2">Vulnerability:</span>
-                          <span>{report.vulnerabilityType}</span>
+                          <span>{report.vulnerability_type}</span>
                         </div>
 
                         <div className="flex items-center text-sm">
@@ -192,13 +198,13 @@ export default function MyReportsPage() {
 
                         <div className="flex items-center text-sm">
                           <span className="font-medium mr-2">Submitted:</span>
-                          <span>{new Date(report.submittedAt).toLocaleDateString()}</span>
+                          <span>{new Date(report.submitted_at).toLocaleDateString()}</span>
                         </div>
 
-                        {report.reviewedAt && (
+                        {report.reviewed_at && (
                           <div className="flex items-center text-sm">
                             <span className="font-medium mr-2">Reviewed:</span>
-                            <span>{new Date(report.reviewedAt).toLocaleDateString()}</span>
+                            <span>{new Date(report.reviewed_at).toLocaleDateString()}</span>
                           </div>
                         )}
                       </div>

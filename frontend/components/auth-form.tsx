@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -22,6 +21,7 @@ export function AuthForm({ type }: AuthFormProps) {
     username: "",
     email: "",
     password: "",
+    confirmPassword: "",
   })
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
@@ -34,15 +34,35 @@ export function AuthForm({ type }: AuthFormProps) {
     setIsLoading(true)
     setError("")
 
+    // ✅ Client-side password match check
+    if (type === "register" && formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match.")
+      setIsLoading(false)
+      return
+    }
+
     try {
       if (type === "login") {
-        await login(formData.email, formData.password)
+        const user = await login(formData.email, formData.password)
+
+        if (user?.isAdmin) {
+          router.push("/admin")
+        } else {
+          router.push("/users")
+        }
       } else {
         await register(formData.username, formData.email, formData.password)
+        router.push("/auth/login")
       }
-      router.push("/users")
-    } catch (err) {
-      setError("Authentication failed. Please try again.")
+    } catch (err: any) {
+      console.error("Auth error:", err)
+
+      // ✅ Try to use backend message if available
+      if (err instanceof Error && err.message) {
+        setError(err.message)
+      } else {
+        setError("Authentication failed. Please try again.")
+      }
     } finally {
       setIsLoading(false)
     }
@@ -59,14 +79,16 @@ export function AuthForm({ type }: AuthFormProps) {
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="text-center">
-            <div className="flex justify-end mb-4">
-                <ThemeToggle  />
-            </div>
-            
+          <div className="flex justify-end mb-4">
+            <ThemeToggle />
+          </div>
+
           <div className="flex justify-center mb-4">
             <Shield className="h-12 w-12 text-primary" />
           </div>
-          <CardTitle className="text-2xl font-bold">{type === "login" ? "Welcome Back" : "Join VunEat"}</CardTitle>
+          <CardTitle className="text-2xl font-bold">
+            {type === "login" ? "Welcome Back" : "Join VunEat"}
+          </CardTitle>
           <CardDescription>
             {type === "login"
               ? "Sign in to access the vulnerable application"
@@ -75,8 +97,11 @@ export function AuthForm({ type }: AuthFormProps) {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* ✅ Dynamic error message */}
             {error && (
-              <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">{error}</div>
+              <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">
+                {error}
+              </div>
             )}
 
             {type === "register" && (
@@ -123,8 +148,28 @@ export function AuthForm({ type }: AuthFormProps) {
               />
             </div>
 
+            {type === "register" && (
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <Input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type="password"
+                  placeholder="Re-enter your password"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+            )}
+
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "Please wait..." : type === "login" ? "Sign In" : "Create Account"}
+              {isLoading
+                ? "Please wait..."
+                : type === "login"
+                ? "Sign In"
+                : "Create Account"}
             </Button>
           </form>
 
@@ -132,14 +177,20 @@ export function AuthForm({ type }: AuthFormProps) {
             {type === "login" ? (
               <p className="text-muted-foreground">
                 {"Don't have an account? "}
-                <Link href="/auth/register" className="text-primary hover:underline font-medium">
+                <Link
+                  href="/auth/register"
+                  className="text-primary hover:underline font-medium"
+                >
                   Sign up
                 </Link>
               </p>
             ) : (
               <p className="text-muted-foreground">
                 Already have an account?{" "}
-                <Link href="/auth/login" className="text-primary hover:underline font-medium">
+                <Link
+                  href="/auth/login"
+                  className="text-primary hover:underline font-medium"
+                >
                   Sign in
                 </Link>
               </p>

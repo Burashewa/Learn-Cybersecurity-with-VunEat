@@ -55,31 +55,9 @@ export function Navbar() {
             </Link>
           </div>
 
-          <div className="hidden md:flex items-center space-x-6">
-            {isAuthenticated && (
-              <>
-                <Link href="/users" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Dashboard
-                </Link>
-                <Link href="/users/reports" className="text-muted-foreground hover:text-foreground transition-colors">
-                  Reports
-                </Link>
-              </>
-            )}
-
-          </div>
-
           <div className="flex items-center space-x-2">
             <ThemeToggle />
-            {isAuthenticated ? (
-              <div className="flex items-center space-x-2">
-                <span className="text-sm text-muted-foreground">Welcome, {user?.username}</span>
-                <Button variant="ghost" onClick={logout} className="flex items-center space-x-1">
-                  <LogOut className="h-4 w-4" />
-                  <span>Logout</span>
-                </Button>
-              </div>
-            ) : (
+             
               <>
                 <Button variant="ghost" asChild>
                   <Link href="/auth/login">Login</Link>
@@ -88,7 +66,7 @@ export function Navbar() {
                   <Link href="/auth/register">Register</Link>
                 </Button>
               </>
-            )}
+            
           </div>
         </div>
       </div>
