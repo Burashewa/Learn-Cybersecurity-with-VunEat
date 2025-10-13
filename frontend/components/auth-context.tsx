@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL 
+const API_URL = process.env.NEXT_PUBLIC_API_URL
 
 interface User {
   id: string
@@ -18,38 +18,60 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<User>
   logout: () => void
   register: (username: string, email: string, password: string) => Promise<User>
+  token: string | null
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
+  const [token, setToken] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
+  // Load user and token from localStorage on mount
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user")
+    const storedToken = localStorage.getItem("token")
+
+    if (storedUser && storedToken) {
+      try {
+        setUser(JSON.parse(storedUser))
+        setToken(storedToken)
+      } catch (err) {
+        console.error("Failed to parse stored user:", err)
+        localStorage.removeItem("user")
+        localStorage.removeItem("token")
+      }
+    }
+
+    setIsLoading(false)
+  }, [])
+
   const login = async (email: string, password: string): Promise<User> => {
+    if (!API_URL) throw new Error("API_URL is not defined")
+
     const res = await fetch(`${API_URL}/api/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
     })
 
+    const data = await res.json().catch(() => ({}))
+
     if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      const message = errorData.message || "Login failed";
-      throw new Error(message);
+      const message = data.message || "Login failed"
+      throw new Error(message)
     }
-
-
-    const data = await res.json()
 
     const loggedInUser: User = {
       id: data.user.id,
       username: data.user.username,
       email: data.user.email,
-      isAdmin: data.user.is_admin, // backend returns is_admin
+      isAdmin: data.user.is_admin,
     }
 
     setUser(loggedInUser)
+    setToken(data.token)
     localStorage.setItem("user", JSON.stringify(loggedInUser))
     localStorage.setItem("token", data.token)
 
@@ -57,54 +79,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const register = async (username: string, email: string, password: string): Promise<User> => {
+    if (!API_URL) throw new Error("API_URL is not defined")
+
     const res = await fetch(`${API_URL}/api/register`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, email, password }),
-    });
+    })
+
+    const data = await res.json().catch(() => ({}))
 
     if (!res.ok) {
-      throw new Error("Registration failed");
+      const message = data.message || "Registration failed"
+      throw new Error(message)
     }
 
-    const data = await res.json();
-
-    // Do not set user here - registration does not mean authentication
-    // Do not set localStorage values here either
-
+    // Registration does not auto-login
     return {
       id: data.user.id,
       username: data.user.username,
       email: data.user.email,
       isAdmin: data.user.is_admin,
-    };
-  };
-
+    }
+  }
 
   const logout = () => {
     setUser(null)
+    setToken(null)
     localStorage.removeItem("user")
     localStorage.removeItem("token")
   }
-
-  useEffect(() => {
-    const storedUser = localStorage.getItem("user")
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser))
-      } catch (error) {
-        console.error("Failed to parse stored user:", error)
-        localStorage.removeItem("user")
-      }
-    }
-    setIsLoading(false)
-  }, [])
-
 
   return (
     <AuthContext.Provider
       value={{
         user,
+        token,
         isAuthenticated: !!user,
         isLoading,
         login,
@@ -124,4 +134,3 @@ export function useAuth() {
   }
   return context
 }
-
