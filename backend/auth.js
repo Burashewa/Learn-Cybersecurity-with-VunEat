@@ -17,7 +17,7 @@ const pool = new Pool({
 
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin:[ "http://localhost:3000", "https://learn-cybersecurity-with-vun-eat.vercel.app"],
     credentials: true,
   })
 );
