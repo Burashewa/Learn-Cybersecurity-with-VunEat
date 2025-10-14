@@ -59,9 +59,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const data = await res.json().catch(() => ({}))
 
     if (!res.ok) {
-      const message = data.message || "Login failed"
-      throw new Error(message)
+      const errorData = await res.json().catch(() => ({}));
+      console.error("API Error:", res.status, errorData);
+      throw new Error(errorData.message || "Request failed");
     }
+
 
     const loggedInUser: User = {
       id: data.user.id,
