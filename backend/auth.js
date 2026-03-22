@@ -23,6 +23,10 @@ app.use(
 );
 app.use(express.json());
 
+// SIEM forwarding (fire-and-forget to SIEM_COLLECTOR_URL; must run after body parser)
+const { siemForwardingMiddleware } = require("./middleware/siemForwarding");
+app.use(siemForwardingMiddleware);
+
 // --------------------------- Mount routes
 const velnerablityList = require("./routes/vulnerabilityRoutes");
 const submitReportRoutes = require("./routes/reports/submitReportRoutes");
