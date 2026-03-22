@@ -37,25 +37,28 @@ function safeStringify(obj) {
 }
 
 /**
- * Extracts client IP, handling x-forwarded-for (Render/proxy)
+ * Extracts client IP. Prioritizes x-forwarded-for for Render/proxy deployments.
+ * Render forwards the original client IP in x-forwarded-for (comma-separated chain).
  */
 function getClientIp(req) {
   const forwarded = req.headers["x-forwarded-for"];
-  if (forwarded) {
+  if (forwarded && typeof forwarded === "string") {
     return forwarded.split(",")[0].trim();
   }
   return req.socket?.remoteAddress ?? req.connection?.remoteAddress ?? "unknown";
 }
 
 /**
- * Extracts user identifier from req.user or session
+ * Extracts user identifier from req.user (set by identifyUser) or session.
+ * Prefers email, then username, then id for attribution.
  */
 function getUser(req) {
-  if (req.user) {
-    return req.user.email ?? req.user.username ?? req.user.id ?? String(req.user.id);
+  if (req.user && typeof req.user === "object") {
+    return req.user.email ?? req.user.username ?? (req.user.id != null ? String(req.user.id) : null) ?? "anonymous";
   }
-  if (req.session?.user) {
-    return req.session.user.email ?? req.session.user.username ?? req.session.user.id ?? "session";
+  if (req.session?.user && typeof req.session.user === "object") {
+    const u = req.session.user;
+    return u.email ?? u.username ?? (u.id != null ? String(u.id) : null) ?? "session";
   }
   return "anonymous";
 }

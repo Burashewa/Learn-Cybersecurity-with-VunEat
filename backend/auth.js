@@ -23,8 +23,10 @@ app.use(
 );
 app.use(express.json());
 
-// SIEM forwarding (fire-and-forget to SIEM_COLLECTOR_URL; must run after body parser)
+// User identification for SIEM attribution (runs before SIEM; does not block)
+const { identifyUser } = require("./middleware/identifyUser");
 const { siemForwardingMiddleware } = require("./middleware/siemForwarding");
+app.use(identifyUser);
 app.use(siemForwardingMiddleware);
 
 // --------------------------- Mount routes
@@ -51,7 +53,7 @@ app.use("/api/reports", submitReportRoutes);
 // --------------------------- Helpers
 function generateToken(user) {
   return jwt.sign(
-    { id: user.id, email: user.email, is_admin: user.is_admin },
+    { id: user.id, email: user.email, username: user.username, is_admin: user.is_admin },
     JWT_SECRET,
     { expiresIn: "1d" }
   );
