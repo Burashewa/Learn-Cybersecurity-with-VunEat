@@ -145,7 +145,7 @@ function siemForwardingMiddleware(req, res, next) {
 
     fetch(collectorUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "ngrok-skip-browser-warning": "true" },
       body,
     }).catch(() => {
       /* fire-and-forget: ignore errors to avoid logging noise */
